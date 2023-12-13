@@ -23,7 +23,7 @@ def check_csv_have_header_and_do_things(src_path):
     headers = datas.columns            ### 把 header 抓出來等等檢查
     have_header_flag = False           ### 用來標記 目前的CSV 有沒有header, 預設用False, 檢查的過程中有發現header 就設True
     longitude_name = ""                ### 用來記住 header 中 哪個欄位 紀錄 經度(x, longitude)
-    latitude_name = ""                 ### 用來記住 header 中 哪個欄位 紀錄 緯度(y, latitude)
+    latitude_name  = ""                 ### 用來記住 header 中 哪個欄位 紀錄 緯度(y, latitude)
 
     ### 掃過 目前所有 headers, 只要裡面存在 x, y, lon開頭, lat開頭 的 header, 我們就算這個CSV 有header存在
     ### 如果有 header 存在, 順便紀錄 longitude_name 和 longitude_name 分別是用哪些文字表達, 舉例 longitude_name 可能就有 "LON", "Lon", "Longitude", "LONGTITUDE", ... 之類的
@@ -88,6 +88,47 @@ def check_csv_with_match_have_header_and_do_things(src_path):
     
     return datas, sar_longitude_name, sar_latitude_name, ais_longitude_name, ais_latitude_name
 ##########################2023/10/26新增(尾)##########################
+##########################2023/12/05新增(頭)##########################
+def check_csv_with_polygon_have_header_and_do_things(src_path):
+    datas = pandas.read_csv(src_path)  ### 讀取CSV， 不管有沒有header
+    headers = datas.columns            ### 把 header 抓出來
+    longitude_1_name = ""           
+    latitude_1_name  = ""
+    longitude_2_name = ""                
+    latitude_2_name  = ""
+    longitude_3_name = ""
+    latitude_3_name  = ""
+    longitude_4_name = ""
+    latitude_4_name  = ""
+
+
+    for header in headers:
+        if    ( ("x1" in header.lower()) ):
+              longitude_1_name = header
+        
+        elif  ( ("y1" in header.lower()) ):
+              latitude_1_name  = header
+
+        elif  ( ("x2" in header.lower()) ):
+              longitude_2_name = header
+
+        elif  ( ("y2" in header.lower()) ):
+              latitude_2_name  = header
+
+        elif  ( ("x3" in header.lower()) ):
+              longitude_3_name = header
+
+        elif  ( ("y3" in header.lower()) ):
+              latitude_3_name  = header
+
+        elif  ( ("x4" in header.lower()) ):
+              longitude_4_name = header
+
+        elif  ( ("y4" in header.lower()) ):
+              latitude_4_name  = header
+    
+    return datas, longitude_1_name, latitude_1_name, longitude_2_name, latitude_2_name, longitude_3_name, latitude_3_name, longitude_4_name, latitude_4_name
+##########################2023/12/05新增(尾)##########################
 
 def csv_to_geojson(src_path, dst_path):
     datas, longitude_name, latitude_name = check_csv_have_header_and_do_things(src_path)
@@ -98,7 +139,7 @@ def csv_to_geojson(src_path, dst_path):
         #################################################################################################################
         ### 建立 Point()物件
         x = row[longitude_name]
-        y = row[latitude_name]
+        y = row [latitude_name]
         point = Point((x, y))
 
         # 相當於問chatgpt的這些部分
@@ -198,7 +239,39 @@ def csv_with_match_to_geojson(src_path, dst_path):
     with open(dst_path, 'w', encoding='utf-8') as f:
         geojson.dump(feature_collection, f)
 ##########################2023/10/26新增(尾)##########################
+##########################2023/12/05新增(頭)##########################
+def csv_with_polygon_to_geojson(src_path, dst_path):
+    datas, longitude_1_name, latitude_1_name, longitude_2_name, latitude_2_name, longitude_3_name, latitude_3_name, longitude_4_name, latitude_4_name = check_csv_with_polygon_have_header_and_do_things(src_path)
+    datas = datas.replace(np.nan, None)  ### 把 nan 填 None
 
+    features = []
+    for index, row in datas.iterrows():
+        x_1 = row[longitude_1_name]
+        y_1 = row [latitude_1_name]
+        x_2 = row[longitude_2_name]
+        y_2 = row [latitude_2_name]
+        x_3 = row[longitude_3_name]
+        y_3 = row [latitude_3_name]
+        x_4 = row[longitude_4_name]
+        y_4 = row [latitude_4_name]
+        polygon = Polygon([[(x_1, y_1), (x_2, y_2), (x_3, y_3), (x_4, y_4)]])
+        properties = {}
+        for header in datas.columns:
+            if(header != longitude_1_name and header != latitude_1_name and header != longitude_2_name and header != latitude_2_name and header != longitude_3_name and header != latitude_3_name and header != longitude_4_name and header != latitude_4_name):  ### 如果 遇到 longitude 和 latitude 欄位 要跳過, 因為這兩個是 x, y 應該要存在Point()部分, 不應該存在 properties
+                properties[header] = row[header]
+
+        feature = Feature(
+            geometry = polygon,
+            properties = properties
+        )
+
+        features.append(feature)
+
+    feature_collection = FeatureCollection(features=features)
+    
+    with open(dst_path, 'w', encoding='utf-8') as f:
+        geojson.dump(feature_collection, f)
+##########################2023/12/05新增(尾)##########################
 def dir_csv_to_geojson(src_dir,finish_dir, dst_dir = "./result_dir"):
     if(os.path.isdir(src_dir) is False):
         print("src_dir 不存在，請輸入正確src_dir")
@@ -215,10 +288,14 @@ def dir_csv_to_geojson(src_dir,finish_dir, dst_dir = "./result_dir"):
         src_path = f"{src_dir}/{half_name}.{extd_name}"  ### 拼出 src_path：來源資料夾/檔名.副檔名(csv)
         finish_path = f"{finish_dir}/{half_name}.{extd_name}"
         dst_path = f"{dst_dir}/{half_name}.geojson"      ### 拼出 dst_path：目的資料夾/檔名.副檔名(geojson)
-        if ("match" not in file_name.lower()):
-            csv_to_geojson      (src_path=src_path, dst_path=dst_path)  ### 核心要做的事情 讀取來源路徑的csv檔案 轉成 geojson檔案存入 指定的目的路徑
+        if   ("match"   in file_name.lower()):
+            csv_with_match_to_geojson  (src_path=src_path, dst_path=dst_path)
+             ### 核心要做的事情 讀取來源路徑的csv檔案 轉成 geojson檔案存入 指定的目的路徑
+        elif ("polygon" in file_name.lower()):
+            csv_with_polygon_to_geojson(src_path=src_path, dst_path=dst_path)
         else:
-            csv_with_match_to_geojson(src_path=src_path, dst_path=dst_path)
+            csv_to_geojson             (src_path=src_path, dst_path=dst_path)
+
         shutil.move(src_path, finish_path)
 
 src_dir    = "GEOJSON_file/data/"
