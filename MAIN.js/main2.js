@@ -186,7 +186,7 @@ Promise.all([
             // 使用自定義圖標創建標記
               var lon = JSON.stringify(latlng).split(":")[2].split("}")[0]
               var lat = JSON.stringify(latlng).split(",")[0].split(":")[1]
-              var temp_mark = L.marker(latlng, { icon: customIcon }).bindPopup("<div style='text-align: center;'>--MMSI--<br>" + feature.properties.MMSI + "<br>--座標--<br>" + lon + "," + lat + "</div>");
+              var temp_mark = L.marker(latlng, { icon: customIcon }).bindPopup("<div style='text-align: center;'>--座標--<br>" + lon + "," + lat + "</div>");
               return temp_mark;
             }
           })
@@ -243,7 +243,9 @@ Promise.all([
     let shared_maxClusterRadius = 80;           // 給所有Layer 共用的 cluster群聚半徑
     
     let SAR_update_cluster_layer = function (processedLayer) {
-      temp = L.markerClusterGroup();                            // 建立一個 新的暫存Cluster
+      temp = L.markerClusterGroup({
+        disableClusteringAtZoom: 18  // Adjust this value to control clustering behavior
+      });                            // 建立一個 新的暫存Cluster
       temp.addLayer(processedLayer);                            // 把 現在的Cluster資料 加進去 暫存Cluster
       temp.options.maxClusterRadius = shared_maxClusterRadius;  // 設定 暫存Cluster 的 Cluster半徑
       map.removeLayer(processedLayer);                          // 把 原本的Cluster 從地圖上拿掉
@@ -252,7 +254,9 @@ Promise.all([
     }
 
     let AIS_update_cluster_layer = function (processedLayer) {
-      temp = L.markerClusterGroup();                            // 建立一個 新的暫存Cluster
+      temp = L.markerClusterGroup({
+        disableClusteringAtZoom: 18  // Adjust this value to control clustering behavior
+      });                            // 建立一個 新的暫存Cluster
       temp.addLayer(processedLayer);                            // 把 現在的Cluster資料 加進去 暫存Cluster
       temp.options.maxClusterRadius = shared_maxClusterRadius;  // 設定 暫存Cluster 的 Cluster半徑
       map.removeLayer(processedLayer);                          // 把 原本的Cluster 從地圖上拿掉
