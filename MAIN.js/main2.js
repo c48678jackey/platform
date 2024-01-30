@@ -28,10 +28,14 @@ map.addControl(drawControl);
 // ###################################################################################################
 
 //設定抓取文件路徑
-const GeoJSONboatfilesPath    = 'GEOJSON_file/result/';
-const GeoJSONboatfilesAISPath = 'GEOJSON_file/result/have_ship_name/';
-fetch('GEOJSON_file/result/')
+const result_Path = 'GEOJSON_file/result/';
+const Tile_Path   = 'GEOJSON_file/result/TILE_file/';
+Promise.all([
+  fetch('GEOJSON_file/result/')
+  .then(response => response.text()),
+  fetch('GEOJSON_file/result/TILE_file/')
   .then(response => response.text())
+  ])
   .then(data => {
     //console.log("data", data);
     // 用 DOMParser 來解析 fetch到的 HTML， 變成 可操作的物件
@@ -40,12 +44,12 @@ fetch('GEOJSON_file/result/')
     console.log("htmlDoc", htmlDoc);
 
     // 獲取所有a_tags（通常是文件名）
-    let a_tags_all  = htmlDoc.querySelectorAll('a');
-    console.log("a_tags_all", a_tags_all);
+    let a_tags_all  = htmlDoc.querySelectorAll('a.icon');
+    // console.log("a_tags_all", a_tags_all);
     a_tags_all      = Array.from(a_tags_all);
-    //console.log("a_tags_all_array", a_tags_all);
-    a_tags_you_want = a_tags_all.slice(3)
-    // console.log("a_tags_you_want", a_tags_you_want);
+    console.log("a_tags_all_array", a_tags_all);
+    a_tags_you_want = a_tags_all
+    console.log("a_tags_you_want", a_tags_you_want);
     // console.log("a_tag", a_tags_you_want);
     // console.log("a_tag", a_tags_you_want[0].getElementsByTagName("span")[0].textContent);
     // console.log("a_tag", a_tags_you_want[1].getElementsByTagName("span")[0].textContent);
@@ -53,19 +57,25 @@ fetch('GEOJSON_file/result/')
     // console.log("a_tag", a_tags_you_want[3].getElementsByTagName("span")[0].textContent);
     // console.log("a_tag", a_tags_you_want[4].getElementsByTagName("span")[0].textContent);
 
-    let GeoJSONboatfileNames_withoutfilter = a_tags_you_want.map(a_tag => a_tag.getElementsByTagName("span")[0].textContent);
-    // console.log("GeoJSONboatfileNames_withoutfilter", GeoJSONboatfileNames_withoutfilter);
+    let result_fileNames_withoutfilter = a_tags_you_want.map(a_tag => a_tag.getElementsByTagName("span")[0].textContent);
+    console.log("result_fileNames_withoutfilter", result_fileNames_withoutfilter);
 
     // 過濾出你想要的文件名，例如只獲取以 '.geojson' 结尾的文。件名
-    let GeoJSONboatfileNames = GeoJSONboatfileNames_withoutfilter.filter(GEOfileName => GEOfileName.endsWith('.geojson'));
-    // console.log("GeoJSONboatfileNames", GeoJSONboatfileNames);
-    console.log("GeoJSONboatfileNames", GeoJSONboatfileNames);
+    let GeoJSON_fileNames = result_fileNames_withoutfilter.filter(GEOfileName => GEOfileName.endsWith('.geojson'));
+    let TILE_fileNames    = result_fileNames_withoutfilter.filter(GEOfileNam => GEOfileNam.endsWith('TILE'));
+    // console.log("GeoJSON_fileName", GeoJSON_fileName);
+    console.log("GeoJSON_fileNames", GeoJSON_fileNames);
+    console.log("TILE_fileNames"   , TILE_fileNames   );
     // 創建 管理GEOJSON檔案群集圖層(markerClusterGroup)物件 放入 {}
     var boatLayers          = {}
     var boatLayers_AIS      = {}
-    var boatLayers_MATCH = {}
+    var boatLayers_MATCH    = {}
+    var boatLayers_AREA     = {}
+    var up_tile_layer       = {}
+    var mid_tile_layer      = {}
+    var down_tile_layer     = {}
     var dates               = []
-    GeoJSONboatfileNames.forEach( function (fileName_fordates) {
+    GeoJSON_fileNames.forEach( function (fileName_fordates) {
       // 提取日期部分（從位置17到25）, fileName的長相: S1A_IW_GRDH_1SDV_20230719T100133_20230719T100158_049491_05F383_61E2_exp7
       if (fileName_fordates.toLowerCase().endsWith(".geojson") && fileName_fordates.startsWith("20")) {
         var yearpart   = fileName_fordates.substring(0, 4);
@@ -89,10 +99,15 @@ fetch('GEOJSON_file/result/')
       var year  = date.substring(0,  4)
       var month = date.substring(5,  7)
       var day   = date.substring(8, 10)
-      boatLayers    [`${year}${month}${day}`]      = L.markerClusterGroup();
-      boatLayers_AIS[`${year}${month}${day}`]      = L.markerClusterGroup();
-      boatLayers_MATCH[`${year}${month}${day}`]    = L.markerClusterGroup();
+      boatLayers        [`${year}${month}${day}`]    = L.markerClusterGroup();
+      boatLayers_AIS    [`${year}${month}${day}`]    = L.markerClusterGroup();
+      boatLayers_MATCH  [`${year}${month}${day}`]    = L.markerClusterGroup();
+      boatLayers_AREA   [`${year}${month}${day}`]    = L.markerClusterGroup();
+      up_tile_layer     [`${year}${month}${day}`]    = L.tileLayer();
+      mid_tile_layer    [`${year}${month}${day}`]    = L.tileLayer();
+      down_tile_layer   [`${year}${month}${day}`]    = L.tileLayer();
     }
+    
 
     // 自定義boat圖示
     var customIcon  = L.icon({
@@ -121,7 +136,9 @@ fetch('GEOJSON_file/result/')
         var boat_geoJSON = L.geoJSON(data, {
           pointToLayer: function (feature, latlng) {
             // 使用自定義圖標創建標記
-              var temp_mark = L.marker(latlng, { icon: customIcon2 }).bindPopup("<div style='text-align: center;'>--船名--<br>" + feature.properties.MMSI + "</div>");
+              var lon = JSON.stringify(latlng).split(":")[2].split("}")[0]
+              var lat = JSON.stringify(latlng).split(",")[0].split(":")[1]
+              var temp_mark = L.marker(latlng, { icon: customIcon2 }).bindPopup("<div style='text-align: center;'>--MMSI--<br>" + feature.properties.MMSI + "<br>--座標--<br>" + lon + "," + lat + "</div>");
               return temp_mark;
             }
           })
@@ -147,12 +164,29 @@ fetch('GEOJSON_file/result/')
           boat_geoJSON.addTo(boatLayers_MATCH[`${fileName.substring(0, 8)}`]);
         });
       }
+      // ##########################2023/12/13新增(頭)##########################
+      else if (fileName.toLowerCase().includes("area")) {
+        $.getJSON(filePath, function (data) {
+          var boat_geoJSON = L.geoJSON(data, {
+            onEachFeature: function (feature, layer) {
+              var temp_polygon = L.polygon(feature.geometry.coordinates);
+              // point 是 先丟y再丟x, 跟 polygon相反！ 所以先把 point1,2 的 x, y 抓出來, 再正確的用 y, x 來建立 marker
+
+              return temp_polygon;
+            }
+          });
+          boat_geoJSON.addTo(boatLayers_AREA[`${fileName.substring(0, 8)}`]);
+        });
+      }
+      // ##########################2023/12/13新增(尾)##########################
       else {
         $.getJSON(filePath, function (data) {
         var boat_geoJSON = L.geoJSON(data, {
           pointToLayer: function (feature, latlng) {
             // 使用自定義圖標創建標記
-              var temp_mark = L.marker(latlng, { icon: customIcon }).bindPopup("<div style='text-align: center;'>--船名--<br>" + feature.properties.MMSI + "</div>");
+              var lon = JSON.stringify(latlng).split(":")[2].split("}")[0]
+              var lat = JSON.stringify(latlng).split(",")[0].split(":")[1]
+              var temp_mark = L.marker(latlng, { icon: customIcon }).bindPopup("<div style='text-align: center;'>--MMSI--<br>" + feature.properties.MMSI + "<br>--座標--<br>" + lon + "," + lat + "</div>");
               return temp_mark;
             }
           })
@@ -161,7 +195,7 @@ fetch('GEOJSON_file/result/')
       }
     }
 
-    // 把數組內容做成可給GEOJSON插件運作的樣式，並拿去"函式GeoJSONboatfilesPath"執行。
+    // 把數組內容做成可給GEOJSON插件運作的樣式，並拿去"函式result_Path"執行。
     // 第一個要丟內容為.geojson檔名的數組，第二個要丟資料夾相對路徑
     function processGeoJSONFiles(files, relative_path) {
       // 遍歷文件列表
@@ -169,16 +203,38 @@ fetch('GEOJSON_file/result/')
         if (file.endsWith('.geojson')) {
           //設定$.getJSON讀取的路徑
           const GeoJSONfilePath = `${relative_path}${file}`;
-          console.log("GeoJSONfilePath", GeoJSONfilePath)
+          // console.log("GeoJSONfilePath", GeoJSONfilePath)
           processGeoJSONFile(GeoJSONfilePath, `${file}`);
         }
       });
     }
 
     // 調用處理文件的函数
-    console.log("GeoJSONboatfileNames", GeoJSONboatfileNames)
-    console.log("GeoJSONboatfilesPath", GeoJSONboatfilesPath)
-    processGeoJSONFiles(GeoJSONboatfileNames, GeoJSONboatfilesPath);
+    console.log("GeoJSON_fileNames", GeoJSON_fileNames)
+    console.log("result_Path", result_Path)
+    processGeoJSONFiles(GeoJSON_fileNames, result_Path);
+
+//////////////////////////2024/1/11新增(頭)//////////////////////////
+    function processTileFiles(files, relative_path) {
+      // 遍歷文件列表
+      files.forEach(function (file) {
+        const TilefilePath = `${relative_path}${file}/{z}/{x}/{y}.png`;
+        console.log("TilefilePath", TilefilePath)
+        if      (file.split('_')[1].toLowerCase().includes("up")) {
+          up_tile_layer  [`${file.substring(0, 8)}`].setUrl(TilefilePath)
+        }
+        else if (file.split('_')[1].toLowerCase().includes("mid")) {
+          mid_tile_layer [`${file.substring(0, 8)}`].setUrl(TilefilePath)
+        }
+        else if (file.split('_')[1].toLowerCase().includes("down")) {
+          down_tile_layer[`${file.substring(0, 8)}`].setUrl(TilefilePath)
+        }
+      });
+    }
+    console.log("TILE_fileNames", TILE_fileNames)
+    console.log("Tile_Path", Tile_Path)
+    processTileFiles(TILE_fileNames, Tile_Path);
+//////////////////////////2024/1/11新增(尾)//////////////////////////
 
     // 走到這裡 會把 boatLayers, boatLayers_AIS 的 Cluster圖層物件 都依據 日期 把 資料點 放入 相應日期的Cluster圖層物件中 囉～
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -186,7 +242,16 @@ fetch('GEOJSON_file/result/')
     let last_option = "選擇日期";                // 紀錄 select 上次按的選項，移除圖層的時候會用到， 因為 boat 和 ais 的日期一定會一樣， 所以不需要 分 boat_last_option 和 ais_last_option
     let shared_maxClusterRadius = 80;           // 給所有Layer 共用的 cluster群聚半徑
     
-    let update_cluster_layer = function (processedLayer) {
+    let SAR_update_cluster_layer = function (processedLayer) {
+      temp = L.markerClusterGroup();                            // 建立一個 新的暫存Cluster
+      temp.addLayer(processedLayer);                            // 把 現在的Cluster資料 加進去 暫存Cluster
+      temp.options.maxClusterRadius = shared_maxClusterRadius;  // 設定 暫存Cluster 的 Cluster半徑
+      map.removeLayer(processedLayer);                          // 把 原本的Cluster 從地圖上拿掉
+      temp.addTo(map);                                          // 把 暫存的Cluster 放上地圖
+      return temp;                                              // 把原本Cluster 更新成 暫存Cluster
+    }
+
+    let AIS_update_cluster_layer = function (processedLayer) {
       temp = L.markerClusterGroup();                            // 建立一個 新的暫存Cluster
       temp.addLayer(processedLayer);                            // 把 現在的Cluster資料 加進去 暫存Cluster
       temp.options.maxClusterRadius = shared_maxClusterRadius;  // 設定 暫存Cluster 的 Cluster半徑
@@ -227,20 +292,30 @@ fetch('GEOJSON_file/result/')
         // var image_check = L.DomUtil.create('input', 'leaflet-control-layers-selector', image_span); image_check.type = "checkbox";
         // var image_span = L.DomUtil.create('span', '', image_span); image_span.innerHTML = "影像";
 
-        var boat_label     = L.DomUtil.create("label", "", layerover)
-        var boat_span      = L.DomUtil.create("span", "", boat_label)
-        var boat_check     = L.DomUtil.create('input', 'leaflet-control-layers-selector', boat_span); boat_check.type = "checkbox";
-        var boat_span      = L.DomUtil.create('span', '', boat_span); boat_span.innerHTML = "船隻";
+        var boat_label     = L.DomUtil.create("label", "",   layerover  )
+        var boat_span      = L.DomUtil.create("span" , "",   boat_label )
+        var boat_check     = L.DomUtil.create('input', 'leaflet-control-layers-selector', boat_span) ; boat_check.type  = "checkbox";
+        var boat_span      = L.DomUtil.create('span' , '',   boat_span  ); boat_span.innerHTML  = "SAR";
 
-        var ais_label      = L.DomUtil.create("label", "", layerover)
-        var ais_span       = L.DomUtil.create("span", "", ais_label)
-        var ais_check      = L.DomUtil.create('input', 'leaflet-control-layers-selector', ais_span); ais_check.type = "checkbox";
-        var ais_span       = L.DomUtil.create('span', '', ais_span); ais_span.innerHTML = "AIS";
+        var ais_label      = L.DomUtil.create("label", "",   layerover  )
+        var ais_span       = L.DomUtil.create("span" , "",   ais_label  )
+        var ais_check      = L.DomUtil.create('input', 'leaflet-control-layers-selector', ais_span)  ; ais_check.type   = "checkbox";
+        var ais_span       = L.DomUtil.create('span' , '',   ais_span   ); ais_span.innerHTML   = "AIS";
 
-        var match_label    = L.DomUtil.create("label", "", layerover)
-        var match_span     = L.DomUtil.create("span", "", match_label)
+        var match_label    = L.DomUtil.create("label", "",   layerover  )
+        var match_span     = L.DomUtil.create("span" , "",   match_label)
         var match_check    = L.DomUtil.create('input', 'leaflet-control-layers-selector', match_span); match_check.type = "checkbox";
-        var match_span     = L.DomUtil.create('span', '', match_span); match_span.innerHTML = "船隻&AIS";
+        var match_span     = L.DomUtil.create('span' , '',   match_span ); match_span.innerHTML = "SAR&AIS";
+
+        var area_label     = L.DomUtil.create("label", "",   layerover  )
+        var area_span      = L.DomUtil.create("span" , "",   area_label )
+        var area_check     = L.DomUtil.create('input', 'leaflet-control-layers-selector', area_span) ; area_check.type  = "checkbox";
+        var area_span      = L.DomUtil.create('span' , '',   area_span  ); area_span.innerHTML  = "範圍";
+
+        var tile_label     = L.DomUtil.create("label", "",   layerover  )
+        var tile_span      = L.DomUtil.create("span" , "",   tile_label )
+        var tile_check     = L.DomUtil.create('input', 'leaflet-control-layers-selector', tile_span) ; tile_check.type  = "checkbox";
+        var tile_span      = L.DomUtil.create('span' , '',   tile_span  ); tile_span.innerHTML  = "衛星影像";
 
         // var ais_label = L.DomUtil.create("label", "", layerover)
         // var ais_span = L.DomUtil.create("span", "", ais_label)
@@ -282,14 +357,25 @@ fetch('GEOJSON_file/result/')
               console.log("remove last option:", last_option);
               map.removeLayer(processedLayers[last_option]);
             }
-
+            
             // 顯示現在的boat圖層， 也是有可能選到 "選擇日期"， "選擇日期"沒有圖層不能加， 所以 checkbox 打勾時 如果 select.value 遇到 "選擇日期" 要跳過
             if (select.value !== "選擇日期") {
               console.log("add select.value to map:", select.value);
               processedLayers[select.value].addTo(map);
-              
               console.log("update select.value cluster:", select.value);
-              processedLayers[select.value] = update_cluster_layer(processedLayer = processedLayers[select.value]);
+              if (boat_check.checked){
+              processedLayers[select.value] = SAR_update_cluster_layer(processedLayer = processedLayers[select.value]);}
+              if (ais_check.checked){
+              processedLayers[select.value] = AIS_update_cluster_layer(processedLayer = processedLayers[select.value]);}
+            }
+
+            if (select.value == "選擇日期") {
+              console.log("remove last option:", last_option);
+              map.eachLayer(function (layer) {
+                if (layer !== map & layer !== bigmap) { // 不移除地图本身
+                    map.removeLayer(layer);
+                }
+            });
             }
 
             // 上次的圖層 更新為 現在的圖層，給下次的選項刪除此次的圖層
@@ -322,14 +408,26 @@ fetch('GEOJSON_file/result/')
           if (ais_check.checked)      { boatLayers_AIS =   checked_do_things(processedLayers = boatLayers_AIS)}
           else                        { boatLayers_AIS = unchecked_do_things(processedLayers = boatLayers_AIS)}
         
-          if (match_check.checked) { boatLayers_MATCH =   checked_do_things(processedLayers = boatLayers_MATCH)}
+          if (match_check.checked)    { boatLayers_MATCH =   checked_do_things(processedLayers = boatLayers_MATCH)}
           else                        { boatLayers_MATCH = unchecked_do_things(processedLayers = boatLayers_MATCH)}
+
+          if (area_check.checked)     { boatLayers_AREA =   checked_do_things(processedLayers = boatLayers_AREA)}
+          else                        { boatLayers_AREA = unchecked_do_things(processedLayers = boatLayers_AREA)}
+
+          if (tile_check.checked)     { up_tile_layer   =   checked_do_things(processedLayers = up_tile_layer  )
+                                        mid_tile_layer  =   checked_do_things(processedLayers = mid_tile_layer )
+                                        down_tile_layer =   checked_do_things(processedLayers = down_tile_layer)}
+          else                        { up_tile_layer   = unchecked_do_things(processedLayers = up_tile_layer  )
+                                        mid_tile_layer  = unchecked_do_things(processedLayers = mid_tile_layer )
+                                        down_tile_layer = unchecked_do_things(processedLayers = down_tile_layer)}
         }
 
         // 參考 https://stackoverflow.com/questions/64046196/i%C2%B4m-stucked-creating-a-new-leaflet-custom-control
         L.DomEvent.on(boat_check     , 'click' , check_status_of_select_and_checkbox_then_do_things);
         L.DomEvent.on(ais_check      , 'click' , check_status_of_select_and_checkbox_then_do_things);
-        L.DomEvent.on(match_check , 'click' , check_status_of_select_and_checkbox_then_do_things);
+        L.DomEvent.on(match_check    , 'click' , check_status_of_select_and_checkbox_then_do_things);
+        L.DomEvent.on(area_check     , 'click' , check_status_of_select_and_checkbox_then_do_things);
+        L.DomEvent.on(tile_check     , 'click' , check_status_of_select_and_checkbox_then_do_things);
         L.DomEvent.on(select         , 'change', check_status_of_select_and_checkbox_then_do_things);
         // L.DomEvent.on(container, 'click', checkfunction);
         // 參考 leaflet官網上下載下來的javascript：https://leafletjs.com/download.html，用 ctrl+f 搜 stopPropagation
@@ -354,8 +452,7 @@ fetch('GEOJSON_file/result/')
         // 對這邊來說 last_option 是 目前的 select 選項中的選項喔～
         // 如果 目前的選項 不是 "選擇日期"， 那就 
         if (last_option !== "選擇日期") {
-          boatLayers[last_option]          = update_cluster_layer(boatLayers    [last_option]);
-          boatLayers_AIS[last_option]      = update_cluster_layer(boatLayers_AIS[last_option]);
+          boatLayers[last_option]          = SAR_update_cluster_layer(boatLayers    [last_option]);
         }
       },
  
@@ -368,9 +465,33 @@ fetch('GEOJSON_file/result/')
         size: '250px',
         orientation: 'horizontal',
         id: 'slider',
-        logo: "C",
+        logo: "S",
         syncSlider: false  // 滑動的過程中 要不要同步改變值
       }).addTo(map);
+
+      L.control.slider(
+        // slider 第一個參數放 function， 此function 在 slider 改變值後會被執行， 且 此function 規定一定會被丟一個參數放slider的數值(這個參數可以自己命名)
+        function (slider_value) {
+          shared_maxClusterRadius = slider_value;
+  
+          // 對這邊來說 last_option 是 目前的 select 選項中的選項喔～
+          // 如果 目前的選項 不是 "選擇日期"， 那就 
+          if (last_option !== "選擇日期") {
+            boatLayers_AIS[last_option]      = AIS_update_cluster_layer(boatLayers_AIS[last_option]);
+          }
+        },
+        // slider 第二個參數放 slider 的 options, 參數可參考 https://github.com/Eclipse1979/leaflet-slider
+        { 
+          max: 61,  // slider最大值
+          min: 0.01,
+          value: 60,  // slider初始值
+          step: 1,    // slider移動一格的值
+          size: '250px',
+          orientation: 'horizontal',
+          id: 'slider1',
+          logo: "A",
+          syncSlider: false  // 滑動的過程中 要不要同步改變值
+        }).addTo(map);
     // ###################################################################################################
 
   })
@@ -410,32 +531,3 @@ latlng.addTo(map);
 map.on('mousemove', function (e) {
   latlng.update(e.latlng);
 });
-
-L.layerGroup()
-
-var polygonCoordinates = [
-  [23.854231, 122.057259],
-  [24.274868, 119.589302],
-  [26.020662, 119.944695],
-  [25.603224, 122.448692]
-];
-
-var polygon = L.polygon(polygonCoordinates).addTo(map);
-
-var polygonCoordinates = [
-  [20.831774, 121.433090],
-  [21.258947, 119.020203],
-  [22.766363, 119.308365],
-  [22.342518, 121.747261]
-];
-
-var polygon = L.polygon(polygonCoordinates).addTo(map);
-
-var polygonCoordinates = [
-  [22.342607, 121.747284],
-  [22.766531, 119.307899],
-  [24.274698, 119.589775],
-  [23.854139, 122.057251]
-];
-
-var polygon = L.polygon(polygonCoordinates).addTo(map);

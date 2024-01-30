@@ -1,5 +1,4 @@
-from pykml import parser
-from lxml  import etree
+import xml.etree.ElementTree as ET
 import csv
 import pandas
 import shutil
@@ -11,11 +10,20 @@ import threading
 
 def kml_to_csv(src_path, dst_path):
     # 读取 KML 文件
-    with open(src_path) as f:
-        kml_doc = parser.parse(f).getroot()
+    tree = ET.parse(src_path)
+    root = tree.getroot()
+    namespaces = {
+    'gx': 'http://www.google.com/kml/ext/2.2'
+    }
+    go = root.find(".//Document/Folder/GroundOverlay", namespaces=namespaces)
+    if go is not None:
+        if coords := go.find(".//gx:LatLonQuad/coordinates", namespaces=namespaces):
+            print(coords.text)
+    else:
+        print("GroundOverlay not found under Folder.")
 
     # 提取坐标信息
-    coordinates_str  = kml_doc.Document.Folder.GroundOverlay.coordinates.text
+    coordinates_str  = coords.text
     coordinates_list = [float(coord) for pair in coordinates_str.split() for coord in pair.split(',')]
     headers = ['x1', 'y1', 'x2', 'y2', 'x3', 'y3', 'x4', 'y4']
     if  os.path.exists(dst_path):
@@ -37,10 +45,11 @@ def dir_kml_to_csv(src_dir,finish_dir, dst_dir = "./result_dir"):
     for file_name in file_names:
         half_name = file_name.split(".")[0]  ### 取得 file_name 檔名部分
         extd_name = file_name.split(".")[1]  ### 取得 file_name 副檔名，其實可以指定"kml"就好，但我習慣寫得有彈性一點
-        date_name = half_name.split("_")[0]  ### 取得日期
+        time_name = half_name.split("_")[4]  ### 取得日期時間
+        date_name = time_name[:8]
         src_path    = f"{src_dir}/{half_name}.{extd_name}"  ### 拼出 src_path：來源資料夾/檔名.副檔名(csv)
         finish_path = f"{finish_dir}/{half_name}.{extd_name}"
-        dst_path    = f"{dst_dir}/{date_name}_polygon.csv" 
+        dst_path    = f"{dst_dir}/{date_name}_area.csv" 
         kml_to_csv(src_path, dst_path)
         shutil.move(src_path, finish_path)
         

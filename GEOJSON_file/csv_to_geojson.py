@@ -89,7 +89,7 @@ def check_csv_with_match_have_header_and_do_things(src_path):
     return datas, sar_longitude_name, sar_latitude_name, ais_longitude_name, ais_latitude_name
 ##########################2023/10/26新增(尾)##########################
 ##########################2023/12/05新增(頭)##########################
-def check_csv_with_polygon_have_header_and_do_things(src_path):
+def check_csv_with_area_have_header_and_do_things(src_path):
     datas = pandas.read_csv(src_path)  ### 讀取CSV， 不管有沒有header
     headers = datas.columns            ### 把 header 抓出來
     longitude_1_name = ""           
@@ -240,8 +240,8 @@ def csv_with_match_to_geojson(src_path, dst_path):
         geojson.dump(feature_collection, f)
 ##########################2023/10/26新增(尾)##########################
 ##########################2023/12/05新增(頭)##########################
-def csv_with_polygon_to_geojson(src_path, dst_path):
-    datas, longitude_1_name, latitude_1_name, longitude_2_name, latitude_2_name, longitude_3_name, latitude_3_name, longitude_4_name, latitude_4_name = check_csv_with_polygon_have_header_and_do_things(src_path)
+def csv_with_area_to_geojson(src_path, dst_path):
+    datas, longitude_1_name, latitude_1_name, longitude_2_name, latitude_2_name, longitude_3_name, latitude_3_name, longitude_4_name, latitude_4_name = check_csv_with_area_have_header_and_do_things(src_path)
     datas = datas.replace(np.nan, None)  ### 把 nan 填 None
 
     features = []
@@ -291,8 +291,8 @@ def dir_csv_to_geojson(src_dir,finish_dir, dst_dir = "./result_dir"):
         if   ("match"   in file_name.lower()):
             csv_with_match_to_geojson  (src_path=src_path, dst_path=dst_path)
              ### 核心要做的事情 讀取來源路徑的csv檔案 轉成 geojson檔案存入 指定的目的路徑
-        elif ("polygon" in file_name.lower()):
-            csv_with_polygon_to_geojson(src_path=src_path, dst_path=dst_path)
+        elif ("area" in file_name.lower()):
+            csv_with_area_to_geojson(src_path=src_path, dst_path=dst_path)
         else:
             csv_to_geojson             (src_path=src_path, dst_path=dst_path)
 
