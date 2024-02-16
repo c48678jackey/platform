@@ -7,8 +7,8 @@ const Tile_Path   = 'GEOJSON_file/result/TILE_file/';
 file_names = fs.readdirSync(result_Path);
 const GeoJSON_fileNames = file_names.filter(GEOfileName => GEOfileName.endsWith('.geojson'));
 const TILE_fileNames    = file_names.filter(GEOfileName => GEOfileName.endsWith('TILE'));
-console.log("GeoJSON_fileNames", GeoJSON_fileNames)
-console.log("TILE_fileNames", TILE_fileNames)
+console.log("ServerSide GeoJSON_fileNames", GeoJSON_fileNames)
+console.log("ServerSide TILE_fileNames", TILE_fileNames)
 
 // dates
 const dates = []
@@ -28,7 +28,7 @@ GeoJSON_fileNames.forEach( function (fileName_fordates) {
 });
 // 現在 dates 數组包含不重複的日期
 dates.reverse();
-console.log(dates);
+console.log("ServerSide dates", dates);
 
 
 module.exports = io => {

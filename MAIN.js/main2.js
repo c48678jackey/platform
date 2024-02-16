@@ -3,13 +3,11 @@
 const socket = io.connect();
 //client 收訊息
 socket.on('KongConnect', function( result_Path, Tile_Path, dates, GeoJSON_fileNames, TILE_fileNames) {
+  console.log("result_Path", result_Path)
+  console.log("Tile_Path", Tile_Path)
   console.log("dates", dates)
   console.log("GeoJSON_fileNames", GeoJSON_fileNames)
   console.log("TILE_fileNames", TILE_fileNames)
-  // let result_Path = 'GEOJSON_file/result/';
-  // let Tile_Path   = 'GEOJSON_file/result/TILE_file/';
-
-
 
 var map = L.map('map', { center: [23.973, 120.979], zoom: 8 });
 var osmUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
@@ -39,49 +37,6 @@ map.addControl(drawControl);
 // ###################################################################################################
 
 // ###################################################################################################
-
-//設定抓取文件路徑
-// const result_Path = 'GEOJSON_file/result/';
-// const Tile_Path   = 'GEOJSON_file/result/TILE_file/';
-// Promise.all([
-//   fetch('GEOJSON_file/result/')
-//   .then(response => response.text()),
-//   fetch('GEOJSON_file/result/TILE_file/')
-//   .then(response => response.text())
-// ])
-// .then(data => {
-  
-
-    
-    //console.log("data", data);
-    // // 用 DOMParser 來解析 fetch到的 HTML， 變成 可操作的物件
-    // const parser  = new DOMParser();
-    // const htmlDoc = parser.parseFromString(data, 'text/html');
-    // console.log("htmlDoc", htmlDoc);
-
-    // // 獲取所有a_tags（通常是文件名）
-    // let a_tags_all  = htmlDoc.querySelectorAll('a.icon');
-    // // console.log("a_tags_all", a_tags_all);
-    // a_tags_all      = Array.from(a_tags_all);
-    // console.log("a_tags_all_array", a_tags_all);
-    // a_tags_you_want = a_tags_all
-    // console.log("a_tags_you_want", a_tags_you_want);
-    // // console.log("a_tag", a_tags_you_want);
-    // // console.log("a_tag", a_tags_you_want[0].getElementsByTagName("span")[0].textContent);
-    // // console.log("a_tag", a_tags_you_want[1].getElementsByTagName("span")[0].textContent);
-    // // console.log("a_tag", a_tags_you_want[2].getElementsByTagName("span")[0].textContent);
-    // // console.log("a_tag", a_tags_you_want[3].getElementsByTagName("span")[0].textContent);
-    // // console.log("a_tag", a_tags_you_want[4].getElementsByTagName("span")[0].textContent);
-
-    // let result_fileNames_withoutfilter = a_tags_you_want.map(a_tag => a_tag.getElementsByTagName("span")[0].textContent);
-    // console.log("result_fileNames_withoutfilter", result_fileNames_withoutfilter);
-
-    // // 過濾出你想要的文件名，例如只獲取以 '.geojson' 结尾的文。件名
-    // let GeoJSON_fileNames = result_fileNames_withoutfilter.filter(GEOfileName => GEOfileName.endsWith('.geojson'));
-    // let TILE_fileNames    = result_fileNames_withoutfilter.filter(GEOfileNam => GEOfileNam.endsWith('TILE'));
-    // // console.log("GeoJSON_fileName", GeoJSON_fileName);
-    // console.log("GeoJSON_fileNames", GeoJSON_fileNames);
-    // console.log("TILE_fileNames"   , TILE_fileNames   );
     // 創建 管理GEOJSON檔案群集圖層(markerClusterGroup)物件 放入 {}
     let boatLayers          = {}
     let boatLayers_AIS      = {}
@@ -90,26 +45,6 @@ map.addControl(drawControl);
     let up_tile_layer       = {}
     let mid_tile_layer      = {}
     let down_tile_layer     = {}
-
-    // dates
-    // var dates               = []
-    // GeoJSON_fileNames.forEach( function (fileName_fordates) {
-    //   // 提取日期部分（從位置17到25）, fileName的長相: S1A_IW_GRDH_1SDV_20230719T100133_20230719T100158_049491_05F383_61E2_exp7
-    //   if (fileName_fordates.toLowerCase().endsWith(".geojson") && fileName_fordates.startsWith("20")) {
-    //     var yearpart   = fileName_fordates.substring(0, 4);
-    //     var monthpart  = fileName_fordates.substring(4, 6);
-    //     var daypart    = fileName_fordates.substring(6, 8);
-    //     const datePart = `${yearpart}-${monthpart}-${daypart}`
-
-    //     // 如果日期不在 dates 數组中，則添加
-    //     if (!dates.includes(datePart)) {
-    //       dates.push(datePart);
-    //     }
-    //   }
-    // });
-    // // 現在 dates 數组包含不重複的日期
-    // dates.reverse();
-    // console.log(dates);
 
     //創建圖層
     for (var i = 0; i < dates.length; i++) {
