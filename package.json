@@ -1,9 +1,6 @@
 {
   "dependencies": {
     "express": "^4.18.2",
-    "georaster": "^1.6.0",
-    "georaster-layer-for-leaflet": "^3.10.0",
-    "leaflet-easybutton": "^2.4.0",
     "socket.io": "^4.7.4"
   }
 }
