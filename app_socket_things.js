@@ -5,8 +5,10 @@ const result_Path = "GEOJSON_file/result/";
 const Tile_Path   = 'GEOJSON_file/result/TILE_file/';
 
 file_names = fs.readdirSync(result_Path);
-const GeoJSON_fileNames = file_names.filter(GEOfileName => GEOfileName.endsWith('.geojson'));
-const TILE_fileNames    = file_names.filter(GEOfileName => GEOfileName.endsWith('TILE'));
+const GeoJSON_fileNames = file_names.filter(file_name => file_name.endsWith('.geojson'));
+
+file_names = fs.readdirSync(Tile_Path);
+const TILE_fileNames = file_names.filter(file_name => file_name.toLowerCase().endsWith('tile'));
 console.log("ServerSide GeoJSON_fileNames", GeoJSON_fileNames)
 console.log("ServerSide TILE_fileNames", TILE_fileNames)
 
