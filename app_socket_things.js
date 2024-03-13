@@ -1,12 +1,13 @@
-
-const fs = require('fs');
+// Reference: https://www.geeksforgeeks.org/node-js-fs-readdirsync-method/
+const fs = require('fs'); // Import the filesystem module
+// const path = require('path');
 
 const result_Path = "GEOJSON_file/result/";
 const Tile_Path   = 'GEOJSON_file/result/TILE_file/';
 
-file_names = fs.readdirSync(result_Path);
-const GeoJSON_fileNames = file_names.filter(GEOfileName => GEOfileName.endsWith('.geojson'));
-const TILE_fileNames    = file_names.filter(GEOfileName => GEOfileName.endsWith('TILE'));
+file_names = fs.readdirSync(result_Path); // Function to get current filenames
+const GeoJSON_fileNames = file_names.filter(extension => extension.endsWith('.geojson'));
+const TILE_fileNames    = file_names.filter(extension => extension.endsWith('TILE'));
 console.log("ServerSide GeoJSON_fileNames", GeoJSON_fileNames)
 console.log("ServerSide TILE_fileNames", TILE_fileNames)
 

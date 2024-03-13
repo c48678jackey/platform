@@ -36,7 +36,7 @@ def kml_to_csv(src_path, dst_path):
             csv_writer.writerow(headers)
             csv_writer.writerow(coordinates_list)
 
-def dir_kml_to_csv(src_dir,finish_dir, dst_dir = "./result_dir"):
+def dir_kml_to_csv(src_dir,finish_dir,dst_dir):
     if(os.path.isdir(src_dir) is False):
         print("src_dir 不存在，請輸入正確src_dir")
         return

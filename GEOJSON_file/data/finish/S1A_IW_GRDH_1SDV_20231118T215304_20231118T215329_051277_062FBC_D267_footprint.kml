@@ -10,7 +10,7 @@
           <href>quick-look.png</href>
         </Icon>
         <gx:LatLonQuad>
-          <coordinates>121.748840,22.342579 119.309456,22.766487 119.591324,24.274652 122.058800,23.854111</coordinates>
+          <coordinates>121.747284,22.342607 119.307899,22.766531 119.589775,24.274698 122.057251,23.854139</coordinates>
         </gx:LatLonQuad>
       </GroundOverlay>
     </Folder>

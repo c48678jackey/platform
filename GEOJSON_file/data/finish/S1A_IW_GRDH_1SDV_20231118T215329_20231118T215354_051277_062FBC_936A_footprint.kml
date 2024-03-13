@@ -9,10 +9,10 @@
         <Icon>
           <href>quick-look.png</href>
         </Icon>
-        
-          <coordinates>121.747284,22.342607 119.307899,22.766531 119.589775,24.274698 122.057251,23.854139</coordinates>
-	  </GroundOverlay>		
-      
+        <gx:LatLonQuad>
+          <coordinates>121.433090,20.831774 119.020203,21.258947 119.308365,22.766363 121.747261,22.342518</coordinates>
+        </gx:LatLonQuad>
+      </GroundOverlay>
     </Folder>
   </Document>
 </kml>

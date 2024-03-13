@@ -9,55 +9,41 @@ socket.on('KongConnect', function( result_Path, Tile_Path, dates, GeoJSON_fileNa
   console.log("GeoJSON_fileNames", GeoJSON_fileNames)
   console.log("TILE_fileNames", TILE_fileNames)
 
-var map = new L.map('map', { 
-  center: [23.97565, 120.9738819], // Initial map center coordinates
+var map = L.map('map', { 
+  center: [23.973, 120.979], // Initial map center coordinates
   zoom: 8, // Initial zoom level
   minZoom: 7, // Minimum allowed zoom level
   maxZoom: 15 // Maximum allowed zoom level
 });
 var osmUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-var osmAttr = '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-var osm = L.tileLayer(osmUrl, { maxZoom: 15, attribution: osmAttr });
+var attribution = '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+var bigmap = L.tileLayer(osmUrl, { attribution: attribution }).addTo(map);
 
 //創建迷你視窗
 var miniosm = new L.tileLayer(osmUrl);
 var miniMap = new L.Control.MiniMap(miniosm, {
   toggleDisplay: true,  // 在主地圖上顯示/隱藏迷你地圖
   minimized: false      // 初始化時是否最小化迷你地圖
-}).addTo(map);
+}); map.addLayer(miniMap);
 
 //創建畫畫工具
-var drawnItems = new L.featureGroup();
-map.addLayer(drawnItems);
-
-L.control.layers(
-  {'osm': osm.addTo(map),
-  "google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
-    attribution: 'google'})
-  }, {'drawlayer': drawnItems}, {position: 'topleft', collapsed: false}
-  ).addTo(map);
-map.addControl(new L.Control.Draw({
-  edit:{
+onMounted(()=>{ // 建立繪圖資料加到map
+  const drawnItems = new L.FeatureGroup();
+  map.addLayer(drawnItems);
+})
+const drawControl = new L.Control.Draw({ // 建立繪圖的控制元件
+  position: 'topleft',
+  collapsed: true,
+  edit: {
     featureGroup: drawnItems,
-    poly: {
-      allowIntersection: false
-    }
-  },
-  draw: {
-    polygon: {
-      allowIntersection: false,
-      showArea: true
-    }
   }
-}));
+});
+map.addControl(drawControl);
 // 監聽created事件，透過e.layer將繪製後的圖形加入地圖圖層
 map.on(L.Draw.Event.CREATED, function(e){
-  
-  var type = e.layerType, layer = e.layer;
-  if (type === 'marker') {
-    layer.bindPopup('A popup!');
-  }
-  drawnItems.addLayer(layer)
+  console.log(e);
+  const drawnlayer = e.drawnlayer;
+  map.addLayer(drawnlayer);
 });
 
 // ###################################################################################################
@@ -68,9 +54,9 @@ map.on(L.Draw.Event.CREATED, function(e){
     let boatLayers_AIS      = {}
     let boatLayers_MATCH    = {}
     let boatLayers_AREA     = {}
-    let up_tile_layer       = {}
+    let top_tile_layer      = {}
     let mid_tile_layer      = {}
-    let down_tile_layer     = {}
+    let bot_tile_layer      = {}
 
     //創建圖層
     for (var i = 0; i < dates.length; i++) {
@@ -82,9 +68,9 @@ map.on(L.Draw.Event.CREATED, function(e){
       boatLayers_AIS    [`${year}${month}${day}`]    = L.markerClusterGroup();
       boatLayers_MATCH  [`${year}${month}${day}`]    = L.markerClusterGroup();
       boatLayers_AREA   [`${year}${month}${day}`]    = L.markerClusterGroup();
-      up_tile_layer     [`${year}${month}${day}`]    = L.tileLayer();
+      top_tile_layer     [`${year}${month}${day}`]    = L.tileLayer();
       mid_tile_layer    [`${year}${month}${day}`]    = L.tileLayer();
-      down_tile_layer   [`${year}${month}${day}`]    = L.tileLayer();
+      bot_tile_layer   [`${year}${month}${day}`]    = L.tileLayer();
     }
     
 
@@ -105,18 +91,20 @@ map.on(L.Draw.Event.CREATED, function(e){
     });
 
     ///////////////////////////////////////////////////////////////////////////////
-    // 把處理好的資料用 jQuery 的 $.getJSON 函數運作並 把產出的點位 根據日期 放到圖層上
+    // 把處理好的資料用 jQuery 的 $.getJSON 函數運作並把產出的點位根據日期放到圖層上
     // 再把圖層存到 boat_geoJSON{} 裡面
     // 第一個參數要丟處理好可給$.getJSON讀取的路徑，第二個參數丟檔案名稱
     function processGeoJSONFile(filePath, fileName) {
       // 使用 $.getJSON 載入並處理 GEOJSON 檔案
-      if (fileName.toLowerCase().includes("ais")) {
+      if (fileName.toLowerCase().includes("ais")) { // AIS coordinates
         $.getJSON(filePath, function (data) {
         var boat_geoJSON = L.geoJSON(data, {
           pointToLayer: function (feature, latlng) {
             // 使用自定義圖標創建標記
-              var lon = JSON.stringify(latlng).split(":")[2].split("}")[0]
-              var lat = JSON.stringify(latlng).split(",")[0].split(":")[1]
+              //var lon = JSON.stringify(latlng).split(":")[2].split("}")[0]
+              //var lat = JSON.stringify(latlng).split(",")[0].split(":")[1]
+              var lat = latlng.lat;
+              var lon = latlng.lng;
               var temp_mark = L.marker(latlng, { icon: customIcon2 }).bindPopup("<div style='text-align: center;'>--MMSI--<br>" + feature.properties.MMSI + "<br>--座標--<br>" + lon + "," + lat + "</div>");
               return temp_mark;
             }
@@ -144,7 +132,7 @@ map.on(L.Draw.Event.CREATED, function(e){
         });
       }
       // ##########################2023/12/13新增(頭)##########################
-      else if (fileName.toLowerCase().includes("area")) {
+      else if (fileName.toLowerCase().includes("area")) { // Image area
         $.getJSON(filePath, function (data) {
           var boat_geoJSON = L.geoJSON(data, {
             onEachFeature: function (feature, layer) {
@@ -158,13 +146,15 @@ map.on(L.Draw.Event.CREATED, function(e){
         });
       }
       // ##########################2023/12/13新增(尾)##########################
-      else {
+      else { // SAR coordinates
         $.getJSON(filePath, function (data) {
         var boat_geoJSON = L.geoJSON(data, {
           pointToLayer: function (feature, latlng) {
             // 使用自定義圖標創建標記
-              var lon = JSON.stringify(latlng).split(":")[2].split("}")[0]
-              var lat = JSON.stringify(latlng).split(",")[0].split(":")[1]
+              //var lon = JSON.stringify(latlng).split(":")[2].split("}")[0]
+              //var lat = JSON.stringify(latlng).split(",")[0].split(":")[1]
+              var lat = latlng.lat;
+              var lon = latlng.lng; 
               var temp_mark = L.marker(latlng, { icon: customIcon }).bindPopup("<div style='text-align: center;'>--座標--<br>" + lon + "," + lat + "</div>");
               return temp_mark;
             }
@@ -199,14 +189,14 @@ map.on(L.Draw.Event.CREATED, function(e){
       files.forEach(function (file) {
         const TilefilePath = `${relative_path}${file}/{z}/{x}/{y}.png`;
         console.log("TilefilePath", TilefilePath)
-        if      (file.split('_')[1].toLowerCase().includes("up")) {
-          up_tile_layer  [`${file.substring(0, 8)}`].setUrl(TilefilePath)
+        if      (file.split('_')[1].toLowerCase().includes("top")) { // Change the file naming to unify the filename length
+          top_tile_layer  [`${file.substring(0, 8)}`].setUrl(TilefilePath)
         }
-        else if (file.split('_')[1].toLowerCase().includes("mid")) {
+        else if (file.split('_')[1].toLowerCase().includes("mid")) { // Change the file naming to unify the filename length
           mid_tile_layer [`${file.substring(0, 8)}`].setUrl(TilefilePath)
         }
-        else if (file.split('_')[1].toLowerCase().includes("down")) {
-          down_tile_layer[`${file.substring(0, 8)}`].setUrl(TilefilePath)
+        else if (file.split('_')[1].toLowerCase().includes("bot")) { // Change the file naming to unify the filename length
+          bot_tile_layer[`${file.substring(0, 8)}`].setUrl(TilefilePath)
         }
       });
     }
@@ -223,7 +213,7 @@ map.on(L.Draw.Event.CREATED, function(e){
     
     let SAR_update_cluster_layer = function (processedLayer) {
       temp = L.markerClusterGroup({
-        disableClusteringAtZoom: 18  // Adjust this value to control clustering behavior
+        disableClusteringAtZoom: 15  // Adjust this value to control clustering behavior; 2024.03.04: set to 15
       });                            // 建立一個 新的暫存Cluster
       temp.addLayer(processedLayer);                            // 把 現在的Cluster資料 加進去 暫存Cluster
       temp.options.maxClusterRadius = shared_maxClusterRadius;  // 設定 暫存Cluster 的 Cluster半徑
@@ -234,7 +224,7 @@ map.on(L.Draw.Event.CREATED, function(e){
 
     let AIS_update_cluster_layer = function (processedLayer) {
       temp = L.markerClusterGroup({
-        disableClusteringAtZoom: 18  // Adjust this value to control clustering behavior
+        disableClusteringAtZoom: 15  // Adjust this value to control clustering behavior; 2024.03.04: set to 15
       });                            // 建立一個 新的暫存Cluster
       temp.addLayer(processedLayer);                            // 把 現在的Cluster資料 加進去 暫存Cluster
       temp.options.maxClusterRadius = shared_maxClusterRadius;  // 設定 暫存Cluster 的 Cluster半徑
@@ -355,7 +345,7 @@ map.on(L.Draw.Event.CREATED, function(e){
             if (select.value == "選擇日期") {
               console.log("remove last option:", last_option);
               map.eachLayer(function (layer) {
-                if (layer !== map & layer !== osm) { // 不移除地图本身
+                if (layer !== map & layer !== bigmap) { // 不移除地图本身
                     map.removeLayer(layer);
                 }
             });
@@ -397,12 +387,12 @@ map.on(L.Draw.Event.CREATED, function(e){
           if (area_check.checked)     { boatLayers_AREA =   checked_do_things(processedLayers = boatLayers_AREA)}
           else                        { boatLayers_AREA = unchecked_do_things(processedLayers = boatLayers_AREA)}
 
-          if (tile_check.checked)     { up_tile_layer   =   checked_do_things(processedLayers = up_tile_layer  )
+          if (tile_check.checked)     { top_tile_layer   =   checked_do_things(processedLayers = top_tile_layer  )
                                         mid_tile_layer  =   checked_do_things(processedLayers = mid_tile_layer )
-                                        down_tile_layer =   checked_do_things(processedLayers = down_tile_layer)}
-          else                        { up_tile_layer   = unchecked_do_things(processedLayers = up_tile_layer  )
+                                        bot_tile_layer =   checked_do_things(processedLayers = bot_tile_layer)}
+          else                        { top_tile_layer   = unchecked_do_things(processedLayers = top_tile_layer  )
                                         mid_tile_layer  = unchecked_do_things(processedLayers = mid_tile_layer )
-                                        down_tile_layer = unchecked_do_things(processedLayers = down_tile_layer)}
+                                        bot_tile_layer = unchecked_do_things(processedLayers = bot_tile_layer)}
         }
 
         // 參考 https://stackoverflow.com/questions/64046196/i%C2%B4m-stucked-creating-a-new-leaflet-custom-control
